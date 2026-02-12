@@ -1,26 +1,25 @@
 import streamlit as st
 import pandas as pd
 import google.generativeai as genai
+import io
 
-# --- CONFIGURATION ---
+# Setup: Configuration and Model Initialization
 st.set_page_config(page_title="Ops & Automation Toolbox", layout="wide", page_icon="🛠️")
 
-# Pulling Secrets from Streamlit Dashboard
-try:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    model = genai.GenerativeModel('models/gemini-1.5-flash-latest')
-except Exception as e:
-    st.error("API Key missing or invalid. Please check Streamlit Secrets.")
+# Pulling Secrets from Streamlit
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+# Using the specific 'models/' prefix for stability
+model = genai.GenerativeModel('models/gemini-flash-latest')
 
 # --- SIDEBAR ACCESS CONTROL ---
 st.sidebar.title("🔐 Access Control")
 access_password = st.sidebar.text_input("Enter Access Key:", type="password")
-st.sidebar.info("This prototype is protected to manage API limits. Key: makesyoulocal-2026")
+st.sidebar.info("Note: This key protects the API from unauthorized use.")
 
 st.title("🛠️ Automation Operations Toolbox")
 st.write("Supporting MakesYouLocal's mission through AI-driven operational clarity.")
 
-# Password Protection Logic
+# Check if the user entered the correct password from secrets
 if access_password == st.secrets["APP_PASSWORD"]:
 
     tab1, tab2 = st.tabs(["📝 Friction-to-SOP", "📊 Ticket Insight Triage"])
@@ -28,10 +27,10 @@ if access_password == st.secrets["APP_PASSWORD"]:
     # --- TAB 1: SOP GENERATOR ---
     with tab1:
         st.header("Friction-to-SOP Generator")
-        st.info("Convert messy process brain-dumps into professional documentation.")
+        st.info("Turn messy process descriptions into structured documentation.")
         
-        messy_input = st.text_area("Describe the process:", 
-                                   placeholder="e.g., When a customer asks for a refund in Dixa, I check Shopify...",
+        messy_input = st.text_area("Describe the process (as a brain dump):", 
+                                   placeholder="e.g., First I open Dixa, look for the customer's email, then check the order ID in Shopify...",
                                    height=200,
                                    max_chars=3000)
 
@@ -39,9 +38,9 @@ if access_password == st.secrets["APP_PASSWORD"]:
             if messy_input:
                 with st.spinner("Gemini is structuring your documentation..."):
                     prompt = (
-                        f"Convert the following messy process description into a professional SOP. "
-                        f"Use Markdown headings: Objective, Prerequisites, Step-by-Step Instructions, and Troubleshooting. "
-                        f"Process: {messy_input}"
+                        f"Convert the following messy process description into a professional Standard Operating Procedure (SOP). "
+                        f"Use these Markdown headings: Objective, Prerequisites, Step-by-Step Instructions, and Common Troubleshooting. "
+                        f"Keep it concise and clear for a new hire. Process: {messy_input}"
                     )
                     response = model.generate_content(prompt)
                     st.markdown("---")
@@ -58,23 +57,25 @@ if access_password == st.secrets["APP_PASSWORD"]:
         
         if uploaded_file:
             df = pd.read_csv(uploaded_file)
-            st.write("Data Preview:", df.head())
+            st.write("Preview of data:", df.head())
             
             if st.button("Analyze for Automation"):
-                with st.spinner("Analyzing patterns..."):
+                with st.spinner("Gemini is identifying recurring manual work..."):
+                    # Limit data sent to AI to stay within free tier limits
                     ticket_data = df.to_string(index=False)[:5000]
                     prompt = (
-                        f"Analyze these e-commerce support tickets. "
-                        f"1. Identify top 3 recurring themes. "
-                        f"2. Suggest one specific automation for each (e.g., via Make.com or Dixa). "
-                        f"Focus on the 'Market' column to see if issues are specific to a country. Data: {ticket_data}"
+                        f"Analyze these customer support tickets from an e-commerce agency context. "
+                        f"1. Identify the top 3 recurring themes. "
+                        f"2. Suggest one specific automation for each theme (e.g., using Make.com or Dixa) to reduce manual work. "
+                        f"Be practical and focus on stability. Data: {ticket_data}"
                     )
                     response = model.generate_content(prompt)
-                    st.subheader("🤖 AI Insights")
+                    st.subheader("🤖 AI Insights & Recommendations")
                     st.write(response.text)
 
 else:
+    # Message shown when the password hasn't been entered yet
     if access_password == "":
-        st.warning("Please enter the Access Key in the sidebar to unlock.")
+        st.warning("Please enter the Access Key in the sidebar to unlock the AI features.")
     else:
-        st.error("Incorrect Access Key.")
+        st.error("Incorrect Access Key. Please check your credentials.")
